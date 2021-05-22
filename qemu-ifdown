@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -x
+
+sudo brctl delif br0 $1
+sudo tunctl -d $1
+brctl show
+

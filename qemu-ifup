@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -x
+
+sudo tunctl -u $(id -un) -t $1
+sudo ifconfig $1 0.0.0.0 promisc up
+sudo brctl addbr br0
+sudo brctl addif br0 $1
+brctl show
+
+sudo ifconfig br0 192.168.3.1/24 promisc up
+
