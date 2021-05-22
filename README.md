@@ -1,14 +1,14 @@
 # qemu-ubuntu
 
-### 0. always run
+### 1. first run
 ```sh
-./bridge.sh
+sudo cp qemu-if* /etc/
 ```
-### 1. ubuntu-core
+### 2. ubuntu-core
 ```sh
 ./kvm2.sh
 ```
-### 2. ubuntu-desktop
+### 3. ubuntu-desktop
 ```sh
 ./kvm.sh
 ```
