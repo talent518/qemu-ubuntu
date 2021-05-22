@@ -15,7 +15,8 @@ sudo iptables -t nat -A POSTROUTING -o br0 -j MASQUERADE
 ```
 ### 2. ubuntu-core
 ```sh
-./kvm2.sh
+# ver value is 16,18,20. default is 18
+./kvm2.sh ver
 ```
 ### 3. ubuntu-desktop
 ```sh
