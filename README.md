@@ -1,4 +1,5 @@
 # qemu-ubuntu
+ubuntu core and desktop for qemu-kvm
 
 ### 1. first run
 ```sh
