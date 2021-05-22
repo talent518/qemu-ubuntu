@@ -3,7 +3,7 @@
 set -e
 
 ver=${1:-18}
-if [ $ver -nq 18 ]; then
+if [ $ver -ne 18 ]; then
 	ver=20
 fi
 
