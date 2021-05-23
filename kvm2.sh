@@ -14,7 +14,7 @@ if [ ! -f "ubuntu-core-$ver-amd64.img" ]; then
 	if [ ! -f "ubuntu-core-$ver-amd64.img.xz" ]; then
 		wget -O ubuntu-core-$ver-amd64.img.xz http://cdimage.ubuntu.com/ubuntu-core/$ver/stable/current/ubuntu-core-$ver-amd64.img.xz
 	fi
-	unxz -k ubuntu-core-$ver-amd64.img.xz
+	unxz -k -v ubuntu-core-$ver-amd64.img.xz
 fi
 
 sudo kvm -m 1024M -smp 2 \
