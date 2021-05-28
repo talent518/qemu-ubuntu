@@ -24,8 +24,6 @@ fi
 
 make -C linux-$kver -j$N
 
-test linux-$kver/arch/x86/boot/bzImage bzImage
-
 if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
 	dd if=/dev/zero of=boot.img bs=1M count=8192
 	mkfs.ext4 boot.img
