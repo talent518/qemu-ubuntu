@@ -20,4 +20,8 @@ sudo cp qemu-if* /etc/
 ```sh
 ./kvm.sh
 ```
+### 4. ubuntu-base
+```sh
+./run.sh
+```
 
