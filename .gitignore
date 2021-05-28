@@ -1,4 +1,7 @@
+boot
+boot.img
 boot.qcow2
 *.xz
-*.img
+*.tar.*
 *.iso
+linux-*
