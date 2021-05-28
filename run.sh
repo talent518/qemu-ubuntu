@@ -24,22 +24,28 @@ fi
 
 make -C linux-$kver -j$N
 
-test linux-$kver/arch/x86/boot/bzImage bzImage
-
 if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
-	dd if=/dev/zero of=boot.img bs=1M count=8192
-	mkfs.ext4 boot.img
-
 	if [ -d boot ]; then
 		if [ "$(df --output=target boot|tail -n1)" = "$(realpath boot)" ]; then
-			sudo umount -qv boot/proc boot/sys boot/dev boot/dev/pts boot
+			sudo umount -qv boot/proc boot/sys boot/dev/pts boot/dev boot
 		fi
 	else
 		mkdir boot
 	fi
 
+	dd if=/dev/zero of=boot.img bs=1M count=8192
+	mkfs.ext4 -L rootfs boot.img
+
 	sudo mount boot.img boot
-	tar -xvf ubuntu-base-21.04-base-amd64.tar.gz -C boot/
+	sudo tar -xvf ubuntu-base-21.04-base-amd64.tar.gz -C boot/
+
+	#pushd linux-$kver > /dev/null
+	#find . -name '*.ko' | while read f; do
+	#	p=../boot/lib/modules/$kver/${f:2}
+	#	sudo mkdir -vp $(dirname $p)
+	#	sudo cp -v $f $p
+	#done
+	#popd > /dev/null
 
 	# mount: proc sys dev
 	sudo mount -t proc /proc boot/proc
@@ -47,20 +53,24 @@ if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
 	sudo mount -o bind /dev boot/dev
 	sudo mount -o bind /dev/pts boot/dev/pts
 
-	cat - > boot/init <<!
+	cat - > init <<!
+set -e
+apt update
+apt install sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager xorg openbox make g++ gcc
 useradd -G adm,sudo abao
 passwd abao
 echo "abao ALL=(ALL:ALL) ALL" >> /dev/sudoers
 rm -vf /init
 !
-	chmod +x boot/init
+	sudo mv init boot/
+	sudo chmod +x boot/init
 	sudo chroot boot /init
 
 	# umount: proc sys dev
 	sudo umount boot/proc
 	sudo umount boot/sys
-	sudo umount boot/dev
 	sudo umount boot/dev/pts
+	sudo umount boot/dev
 
 	sudo umount boot
 
