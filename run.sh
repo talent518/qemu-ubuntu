@@ -12,7 +12,7 @@ if [ ! -d linux-$kver ]; then
 	tar -xvf linux-$kver.tar.xz
 fi
 
-if [ ! -d linux-$kver/.config ]; then
+if [ ! -f linux-$kver/.config ]; then
 	cp /boot/config-$(uname -r) linux-$kver/.config
 	sed -i 's|CONFIG_SYSTEM_TRUSTED_KEYS="debian/canonical-certs.pem"|CONFIG_SYSTEM_TRUSTED_KEYS=""|g' linux-$kver/.config
 	make -C linux-$kver oldconfig
