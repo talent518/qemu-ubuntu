@@ -3,10 +3,11 @@
 set -e
 
 N=$(cat /proc/cpuinfo | grep -c ^processor)
-kver=5.12.7
+kver=${KVER:-5.12.7}
+bver=${BVER:-21.04}
 
 test -f linux-$kver.tar.xz || wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$kver.tar.xz
-test -f ubuntu-base-21.04-base-amd64.tar.gz || wget -O ubuntu-base-21.04-base-amd64.tar.gz http://cdimage.ubuntu.com/ubuntu-base/releases/21.04/release/ubuntu-base-21.04-base-amd64.tar.gz
+test -f ubuntu-base-$bver-base-amd64.tar.gz || wget -O ubuntu-base-$bver-base-amd64.tar.gz http://cdimage.ubuntu.com/ubuntu-base/releases/$bver/release/ubuntu-base-$bver-base-amd64.tar.gz
 
 if [ ! -d linux-$kver ]; then
 	tar -xvf linux-$kver.tar.xz
@@ -37,7 +38,7 @@ if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
 	mkfs.ext4 -L rootfs boot.img
 
 	sudo mount boot.img boot
-	sudo tar -xvf ubuntu-base-21.04-base-amd64.tar.gz -C boot/
+	sudo tar -xvf ubuntu-base-$bver-base-amd64.tar.gz -C boot/
 
 	#pushd linux-$kver > /dev/null
 	#find . -name '*.ko' | while read f; do
@@ -58,6 +59,7 @@ set -e
 test -n "$http_proxy" && export http_proxy=$http_proxy
 test -n "$https_proxy" && export https_proxy=$https_proxy
 apt update
+apt upgrade -y --fix-missing
 apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager xorg openbox make g++ gcc --fix-missing
 useradd -G adm,sudo abao
 passwd abao
@@ -82,4 +84,4 @@ rm -vf /init
 	touch boot.ok
 fi
 
-qemu-system-x86_64 -smp 4 -m 1024M -kernel linux-$kver/arch/$(uname -p)/boot/bzImage -hda boot.img -append "root=/dev/sda console=tty0 console=ttyS0 console=ttyAMR0 init=/sbin/init loglevel=6" $@
+qemu-system-x86_64 -smp 4 -m ${MSIZE:-1024M} -kernel linux-$kver/arch/$(uname -p)/boot/bzImage -hda boot.img -append "root=/dev/sda console=tty0 console=ttyS0 console=ttyAMR0 init=/sbin/init loglevel=6" $@
