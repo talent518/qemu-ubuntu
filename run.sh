@@ -58,7 +58,7 @@ set -e
 test -n "$http_proxy" && export http_proxy=$http_proxy
 test -n "$https_proxy" && export https_proxy=$https_proxy
 apt update
-apt install sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager xorg openbox make g++ gcc
+apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager xorg openbox make g++ gcc --fix-missing
 useradd -G adm,sudo abao
 passwd abao
 echo "abao ALL=(ALL:ALL) ALL" >> /dev/sudoers
