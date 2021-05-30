@@ -60,8 +60,9 @@ test -n "$http_proxy" && export http_proxy=$http_proxy
 test -n "$https_proxy" && export https_proxy=$https_proxy
 apt update
 apt upgrade -y --fix-missing
-apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager xorg openbox make g++ gcc --fix-missing
-useradd -G adm,sudo abao
+apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager make g++ gcc --fix-missing
+hostname abao-u${bver:0:2}
+useradd -m -s /bin/bash -G adm,sudo abao
 passwd abao
 echo "abao ALL=(ALL:ALL) ALL" >> /dev/sudoers
 rm -vf /init
@@ -84,4 +85,10 @@ rm -vf /init
 	touch boot.ok
 fi
 
-qemu-system-x86_64 -smp 4 -m ${MSIZE:-1024M} -kernel linux-$kver/arch/$(uname -p)/boot/bzImage -hda boot.img -append "root=/dev/sda console=tty0 console=ttyS0 console=ttyAMR0 init=/sbin/init loglevel=6" $@
+sudo kvm -smp $N -m ${MSIZE:-1024M} \
+	-kernel linux-$kver/arch/$(uname -p)/boot/bzImage \
+	-hda boot.img \
+	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 init=/bin/systemd loglevel=6" \
+	-net nic,model=e1000e \
+	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
+	$@
