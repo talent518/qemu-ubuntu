@@ -24,4 +24,12 @@ sudo cp qemu-if* /etc/
 ```sh
 ./run.sh
 ```
+### 5. notes
+CONFIG_DEBUG_INFO=y in linux-$kver/.config for crash dump
+Dwarf Error: wrong version in compilation unit header
+crash: vmlinux: no debugging data available
+```sh
+make -C linux-$kver -j3 DEBUG_CFLAGS='-gdwarf-2 -gstrict-dwarf'
+ln -sf linux-$kver/arch/$(uname -p)/boot/bzImage .
+```
 
