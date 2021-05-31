@@ -88,7 +88,7 @@ fi
 sudo kvm -smp $N -m ${MSIZE:-1024M} \
 	-kernel linux-$kver/arch/$(uname -p)/boot/bzImage \
 	-hda boot.img \
-	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 init=/bin/systemd loglevel=6" \
+	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 init=/bin/systemd loglevel=6 $APPEND" \
 	-net nic,model=e1000e \
 	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
 	$@
