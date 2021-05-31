@@ -5,3 +5,5 @@ boot.qcow2
 *.tar.*
 *.iso
 linux-*
+*.ok
+
