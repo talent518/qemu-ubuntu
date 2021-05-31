@@ -26,8 +26,8 @@ else
 			make -C linux-$kver defconfig
 		fi
 	fi
-	
-	make -C linux-$kver -j$N
+echo $MKVAR	
+	make -C linux-$kver -j$N $MKVAR
 fi
 
 if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
