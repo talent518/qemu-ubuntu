@@ -6,26 +6,33 @@ N=$(cat /proc/cpuinfo | grep -c ^processor)
 kver=${KVER:-5.12.7}
 bver=${BVER:-21.04}
 
-test -f linux-$kver.tar.xz || wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$kver.tar.xz
-test -f ubuntu-base-$bver-base-amd64.tar.gz || wget -O ubuntu-base-$bver-base-amd64.tar.gz http://cdimage.ubuntu.com/ubuntu-base/releases/$bver/release/ubuntu-base-$bver-base-amd64.tar.gz
 
-if [ ! -d linux-$kver ]; then
-	tar -xvf linux-$kver.tar.xz
-fi
+if [ -f "bzImage" ]; then
+	kernel=./bzImage
+else
+	kernel=linux-$kver/arch/$(uname -p)/boot/bzImage
 
-if [ ! -f linux-$kver/.config ]; then
-	if [ "$KERNEL" = "all" ]; then
-		cp /boot/config-$(uname -r) linux-$kver/.config
-		sed -i 's|CONFIG_SYSTEM_TRUSTED_KEYS="debian/canonical-certs.pem"|CONFIG_SYSTEM_TRUSTED_KEYS=""|g' linux-$kver/.config
-		make -C linux-$kver oldconfig
-	else
-		make -C linux-$kver defconfig
+	if [ ! -d linux-$kver ]; then
+		test -f linux-$kver.tar.xz || wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/linux-$kver.tar.xz
+		tar -xvf linux-$kver.tar.xz
 	fi
+	
+	if [ ! -f linux-$kver/.config ]; then
+		if [ "$KERNEL" = "all" ]; then
+			cp /boot/config-$(uname -r) linux-$kver/.config
+			sed -i 's|CONFIG_SYSTEM_TRUSTED_KEYS="debian/canonical-certs.pem"|CONFIG_SYSTEM_TRUSTED_KEYS=""|g' linux-$kver/.config
+			make -C linux-$kver oldconfig
+		else
+			make -C linux-$kver defconfig
+		fi
+	fi
+	
+	make -C linux-$kver -j$N
 fi
-
-make -C linux-$kver -j$N
 
 if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
+	test -f ubuntu-base-$bver-base-amd64.tar.gz || wget -O ubuntu-base-$bver-base-amd64.tar.gz http://cdimage.ubuntu.com/ubuntu-base/releases/$bver/release/ubuntu-base-$bver-base-amd64.tar.gz
+
 	if [ -d boot ]; then
 		if [ "$(df --output=target boot|tail -n1)" = "$(realpath boot)" ]; then
 			sudo umount -qv boot/proc boot/sys boot/dev/pts boot/dev boot
@@ -86,7 +93,7 @@ rm -vf /init
 fi
 
 sudo kvm -smp $N -m ${MSIZE:-1024M} \
-	-kernel linux-$kver/arch/$(uname -p)/boot/bzImage \
+	-kernel $kernel \
 	-hda boot.img \
 	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 init=/bin/systemd loglevel=6 $APPEND" \
 	-net nic,model=e1000e \
