@@ -8,44 +8,62 @@ bver=${BVER:-21.04}
 platform=${PLATFORM:-amd64}
 msize=${MSIZE:-1024M}
 
-if [ $(grep -c -E '(svm|vmx)' /proc/cpuinfo) -gt 0 ]; then
-	kvm=kvm
-	pkg=qemu-kvm
-elif [ "$platform" = "amd64" ]; then
-	kvm=qemu-system-$(uname -p)
-	pkg=qemu-system-x86
+APPEND+=" init=/bin/systemd"
+nic=e1000e
+
+if [ "$platform" = "amd64" ]; then
+	if [ $(grep -c -E '(svm|vmx)' /proc/cpuinfo) -gt 0 ]; then
+		kvm=kvm
+		pkg=qemu-kvm
+	else
+		kvm=qemu-system-$(uname -p)
+		pkg=qemu-system-x86
+	fi
+
+	arch=$(uname -p)
+	cross=
+	image=bzImage
+elif [ "$platform" = "armhf" ]; then
+	kvm="qemu-system-arm -machine virt"
+	pkg="qemu-system-arm gcc-arm-linux-gnueabihf"
+
+	arch=arm
+	cross=arm-linux-gnueabihf-
+	image=Image.gz
 else
-	kvm=qemu-system-aarch64
+	platform=arm64
+	kvm="qemu-system-aarch64 -machine virt -M virt,gic_version=3"
 	pkg="qemu-system-aarch64 gcc-aarch64-linux-gnu"
+
+	arch=arm64
+	cross=aarch64-linux-gnu-
+	image=Image.gz
+
+	APPEND+=" console=ttyAMA0"
 fi
 
 sudo dpkg -l qemu-user-static $pkg
 
-if [ "$platform" = "amd64" ]; then
-	arch=$(uname -p)
-	cross=
-else
-	arch=arm64
-	cross=aarch64-linux-gnu-
-fi
-
 if [ -f "bzImage-$arch" ]; then
 	kernel=./bzImage-$arch
 else
-	kernel=linux-$kver/arch/$arch/boot/bzImage
+	kernel=linux-$kver-$arch/arch/$arch/boot/$image
 
-	if [ ! -d linux-$kver ]; then
+	if [ ! -d linux-$kver-$arch ]; then
 		if [ ! -f linux-$kver.tar.xz ]; then
 			wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/linux-$kver.tar.xz
 		fi
 		tar -xvf linux-$kver.tar.xz
+		mv linux-$kver linux-$kver-$arch
 	fi
 	
-	if [ ! -f linux-$kver/.config ]; then
-		make -C linux-$kver ARCH=$arch CROSS_COMPILE=$cross defconfig
+	if [ ! -f linux-$kver-$arch/.config ]; then
+		# cp linux-$kver-$arch/arch/$arch/configs/defconfig linux-$kver-$arch/.config
+		make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross defconfig
+		sed -i 's|=m$|=y|g' linux-$kver-$arch/.config
 	fi
 
-	make -C linux-$kver ARCH=$arch CROSS_COMPILE=$cross -j$N
+	make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross -j$N
 fi
 
 if [ ! -f "boot-$arch.img" -o ! -f "boot-$arch.ok" ]; then
@@ -67,14 +85,6 @@ if [ ! -f "boot-$arch.img" -o ! -f "boot-$arch.ok" ]; then
 	sudo mount boot-$arch.img boot
 	sudo tar -xvf ubuntu-base-$bver-base-$platform.tar.gz -C boot/
 
-	#pushd linux-$kver > /dev/null
-	#find . -name '*.ko' | while read f; do
-	#	p=../boot/lib/modules/$kver/${f:2}
-	#	sudo mkdir -vp $(dirname $p)
-	#	sudo cp -v $f $p
-	#done
-	#popd > /dev/null
-
 	# mount: proc sys dev
 	sudo mount -t proc /proc boot/proc
 	sudo mount -t sysfs /sys boot/sys
@@ -84,22 +94,31 @@ if [ ! -f "boot-$arch.img" -o ! -f "boot-$arch.ok" ]; then
 	cat - > init <<!
 #!/bin/bash
 
-set -e -x
+set -e
+
 test -n "$http_proxy" && export http_proxy=$http_proxy
 test -n "$https_proxy" && export https_proxy=$https_proxy
+
 apt update
-if [ "$arch" = "amd64" ]; then
+
+if [ "$platform" = "amd64" ]; then
 	apt upgrade -y --fix-missing
+	apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager bind9-dnsutils sysstat make g++ gcc --fix-missing
+else
+	apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager bind9-dnsutils sysstat make g++ gcc --fix-missing --no-install-recommends
 fi
-apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager bind9-dnsutils sysstat make g++ gcc --fix-missing
-hostname abao-u${bver:0:2}
+
+echo abao-u${bver:0:2}-$arch > /etc/hostname
+echo "abao ALL=(ALL:ALL) ALL" >> /dev/sudoers
+
 useradd -m -s /bin/bash -G adm,sudo abao
 passwd abao
-echo "abao ALL=(ALL:ALL) ALL" >> /dev/sudoers
 rm -vf /init
 !
+
 	sudo mv init boot/
 	sudo chmod +x boot/init
+
 	sudo chroot boot /init
 
 	# umount: proc sys dev
@@ -119,8 +138,8 @@ fi
 sudo $kvm -smp $N -m $msize \
 	-kernel $kernel \
 	-hda boot-$arch.img \
-	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 init=/bin/systemd loglevel=6 $APPEND" \
-	-net nic,model=e1000e \
+	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 loglevel=6 $APPEND" \
+	-net nic,model=$nic \
 	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
 	$@
 
