@@ -5,33 +5,53 @@ set -e
 N=$(cat /proc/cpuinfo | grep -c ^processor)
 kver=${KVER:-5.12.7}
 bver=${BVER:-21.04}
+platform=${PLATFORM:-amd64}
+msize=${MSIZE:-1024M}
 
-
-if [ -f "bzImage" ]; then
-	kernel=./bzImage
+if [ $(grep -c -E '(svm|vmx)' /proc/cpuinfo) -gt 0 ]; then
+	kvm=kvm
+	pkg=qemu-kvm
+elif [ "$platform" = "amd64" ]; then
+	kvm=qemu-system-$(uname -p)
+	pkg=qemu-system-x86
 else
-	kernel=linux-$kver/arch/$(uname -p)/boot/bzImage
+	kvm=qemu-system-aarch64
+	pkg="qemu-system-aarch64 gcc-aarch64-linux-gnu"
+fi
+
+sudo dpkg -l qemu-user-static $pkg
+
+if [ "$platform" = "amd64" ]; then
+	arch=$(uname -p)
+	cross=
+else
+	arch=arm64
+	cross=aarch64-linux-gnu-
+fi
+
+if [ -f "bzImage-$arch" ]; then
+	kernel=./bzImage-$arch
+else
+	kernel=linux-$kver/arch/$arch/boot/bzImage
 
 	if [ ! -d linux-$kver ]; then
-		test -f linux-$kver.tar.xz || wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/linux-$kver.tar.xz
+		if [ ! -f linux-$kver.tar.xz ]; then
+			wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/linux-$kver.tar.xz
+		fi
 		tar -xvf linux-$kver.tar.xz
 	fi
 	
 	if [ ! -f linux-$kver/.config ]; then
-		if [ "$KERNEL" = "all" ]; then
-			cp /boot/config-$(uname -r) linux-$kver/.config
-			sed -i 's|CONFIG_SYSTEM_TRUSTED_KEYS="debian/canonical-certs.pem"|CONFIG_SYSTEM_TRUSTED_KEYS=""|g' linux-$kver/.config
-			make -C linux-$kver oldconfig
-		else
-			make -C linux-$kver defconfig
-		fi
+		make -C linux-$kver ARCH=$arch CROSS_COMPILE=$cross defconfig
 	fi
-echo $MKVAR	
-	make -C linux-$kver -j$N $MKVAR
+
+	make -C linux-$kver ARCH=$arch CROSS_COMPILE=$cross -j$N
 fi
 
-if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
-	test -f ubuntu-base-$bver-base-amd64.tar.gz || wget -O ubuntu-base-$bver-base-amd64.tar.gz http://cdimage.ubuntu.com/ubuntu-base/releases/$bver/release/ubuntu-base-$bver-base-amd64.tar.gz
+if [ ! -f "boot-$arch.img" -o ! -f "boot-$arch.ok" ]; then
+	if [ ! -f ubuntu-base-$bver-base-$platform.tar.gz ]; then
+		wget -O ubuntu-base-$bver-base-$platform.tar.gz http://cdimage.ubuntu.com/ubuntu-base/releases/$bver/release/ubuntu-base-$bver-base-$platform.tar.gz
+	fi
 
 	if [ -d boot ]; then
 		if [ "$(df --output=target boot|tail -n1)" = "$(realpath boot)" ]; then
@@ -41,11 +61,11 @@ if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
 		mkdir boot
 	fi
 
-	dd if=/dev/zero of=boot.img bs=1M count=8192
-	mkfs.ext4 -L rootfs boot.img
+	dd if=/dev/zero of=boot-$arch.img bs=1M count=8192
+	mkfs.ext4 -L rootfs boot-$arch.img
 
-	sudo mount boot.img boot
-	sudo tar -xvf ubuntu-base-$bver-base-amd64.tar.gz -C boot/
+	sudo mount boot-$arch.img boot
+	sudo tar -xvf ubuntu-base-$bver-base-$platform.tar.gz -C boot/
 
 	#pushd linux-$kver > /dev/null
 	#find . -name '*.ko' | while read f; do
@@ -62,11 +82,15 @@ if [ ! -f "boot.img" -o ! -f "boot.ok" ]; then
 	sudo mount -o bind /dev/pts boot/dev/pts
 
 	cat - > init <<!
-set -e
+#!/bin/bash
+
+set -e -x
 test -n "$http_proxy" && export http_proxy=$http_proxy
 test -n "$https_proxy" && export https_proxy=$https_proxy
 apt update
-apt upgrade -y --fix-missing
+if [ "$arch" = "amd64" ]; then
+	apt upgrade -y --fix-missing
+fi
 apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager bind9-dnsutils sysstat make g++ gcc --fix-missing
 hostname abao-u${bver:0:2}
 useradd -m -s /bin/bash -G adm,sudo abao
@@ -86,16 +110,17 @@ rm -vf /init
 
 	sudo umount boot
 
-	e2fsck -p -f boot.img
+	e2fsck -p -f boot-$arch.img
 	rmdir boot
 
-	touch boot.ok
+	touch boot-$arch.ok
 fi
 
-sudo kvm -smp $N -m ${MSIZE:-1024M} \
+sudo $kvm -smp $N -m $msize \
 	-kernel $kernel \
-	-hda boot.img \
+	-hda boot-$arch.img \
 	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 init=/bin/systemd loglevel=6 $APPEND" \
 	-net nic,model=e1000e \
 	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
 	$@
+

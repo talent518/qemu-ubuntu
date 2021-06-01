@@ -1,5 +1,5 @@
 boot
-boot.img
+*.img
 boot.qcow2
 *.xz
 *.tar.*
