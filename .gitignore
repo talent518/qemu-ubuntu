@@ -6,5 +6,4 @@ boot.qcow2
 *.iso
 linux-*
 *.ok
-
-bzImage
+bzImage*
