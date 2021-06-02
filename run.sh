@@ -32,7 +32,7 @@ elif [ "$platform" = "armhf" ]; then
 	arch=arm
 	kconfig=vexpress_defconfig
 	cross=arm-linux-gnueabihf-
-	image=Image.gz
+	image=zImage
 
 	append="root=/dev/vda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
 else

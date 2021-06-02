@@ -27,7 +27,11 @@ ver value is 16,18,20. default is 18
 ```
 * arm64: aarch64
 ```sh
-PLATFORM=arm64 ./run.sh -nographic
+BVER=20.04.2 PLATFORM=arm64 ./run.sh -nographic
+```
+* armhf
+```sh
+PLATFORM=armhf ./run.sh -nographic
 ```
 ### 5. notes
 CONFIG_DEBUG_INFO=y in linux-$kver/.config for crash dump
