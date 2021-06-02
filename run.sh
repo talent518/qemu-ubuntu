@@ -9,6 +9,7 @@ platform=${PLATFORM:-amd64}
 msize=${MSIZE:-1024M}
 
 nic=e1000e
+kconfig=defconfig
 
 if [ "$platform" = "amd64" ]; then
 	if [ $(grep -c -E '(svm|vmx)' /proc/cpuinfo) -gt 0 ]; then
@@ -23,12 +24,13 @@ if [ "$platform" = "amd64" ]; then
 	cross=
 	image=bzImage
 
-	append="root=/dev/sda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
+	append="root=/dev/sda rw console=ttyS0 loglevel=6 init=/bin/systemd $APPEND"
 elif [ "$platform" = "armhf" ]; then
 	kvm="qemu-system-arm -machine virt -cpu cortex-a8"
 	pkg="qemu-system-arm gcc-arm-linux-gnueabihf"
 
 	arch=arm
+	kconfig=vexpress_defconfig
 	cross=arm-linux-gnueabihf-
 	image=Image.gz
 
@@ -61,7 +63,7 @@ else
 	fi
 	
 	if [ ! -f linux-$kver-$arch/.config ]; then
-		sed 's|=m$|=y|g' linux-$kver-$arch/arch/$arch/configs/defconfig > linux-$kver-$arch/arch/$arch/configs/qemu_defconfig
+		sed 's|=m$|=y|g' linux-$kver-$arch/arch/$arch/configs/$kconfig > linux-$kver-$arch/arch/$arch/configs/qemu_defconfig
 		cat - >> linux-$kver-$arch/arch/$arch/configs/qemu_defconfig <<!
 CONFIG_BLK_DEV_RAM=y
 CONFIG_BLK_DEV_RAM_COUNT=16
