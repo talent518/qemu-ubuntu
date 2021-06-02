@@ -61,13 +61,13 @@ else
 	fi
 	
 	if [ ! -f linux-$kver-$arch/.config ]; then
-		sed 's|=m$|=y|g' linux-$kver-$arch/arch/$arch/configs/defconfig > linux-$kver-$arch/arch/arm64/configs/arm64_defconfig
-		cat - >> linux-$kver-$arch/arch/arm64/configs/arm64_defconfig <<!
+		sed 's|=m$|=y|g' linux-$kver-$arch/arch/$arch/configs/defconfig > linux-$kver-$arch/arch/$arch/configs/qemu_defconfig
+		cat - >> linux-$kver-$arch/arch/$arch/configs/qemu_defconfig <<!
 CONFIG_BLK_DEV_RAM=y
 CONFIG_BLK_DEV_RAM_COUNT=16
 CONFIG_BLK_DEV_RAM_SIZE=65536
 !
-		make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross arm64_defconfig
+		make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross qemu_defconfig
 	fi
 
 	make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross -j$N
