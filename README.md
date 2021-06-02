@@ -36,6 +36,34 @@ Dwarf Error: wrong version in compilation unit header<br/>
 crash: vmlinux: no debugging data available
 ##### Solution
 ```sh
-make -C linux-$kver -j3 DEBUG_CFLAGS='-gdwarf-2 -gstrict-dwarf'
+make -C linux-$kver -j3 DEBUG_CFLAGS='-gdwarf-2 -gstrict-dwarf -g'
 ln -sf linux-$kver/arch/$(uname -p)/boot/bzImage .
 ```
+### 6. kdump for crash dump
+
+##### 6.1. .config
+CONFIG_KEXEC=y
+CONFIG_SYSFS=y
+CONFIG_DEBUG_INFO=y
+CONFIG_CRASH_DUMP=y
+CONFIG_PROC_VMCORE=y
+
+##### 6.2. build
+```sh
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- DEBUG_CFLAGS="-gdwarf-2 -gstrict-dwarf -g" -j4
+```
+##### 6.3. login to system
+```sh
+sudo kexec -p --command-line="root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 loglevel=6 nr_cpus=2 nr_cpus=1" $PWD/bzImage
+sudo sh -c 'echo c > /proc/sysrq-trigger'
+```
+##### 6.4. login to panic mode
+```sh
+sudo cp /proc/vmcore vmcore.df 
+reboot
+```
+##### 6.5. login to system
+```sh
+crash vmlinux vmcore.df 
+```
+
