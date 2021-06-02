@@ -8,7 +8,6 @@ bver=${BVER:-21.04}
 platform=${PLATFORM:-amd64}
 msize=${MSIZE:-1024M}
 
-APPEND+=" init=/bin/systemd"
 nic=e1000e
 
 if [ "$platform" = "amd64" ]; then
@@ -23,23 +22,27 @@ if [ "$platform" = "amd64" ]; then
 	arch=$(uname -p)
 	cross=
 	image=bzImage
+
+	append="root=/dev/sda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
 elif [ "$platform" = "armhf" ]; then
-	kvm="qemu-system-arm -machine virt"
+	kvm="qemu-system-arm -machine virt -cpu cortex-a8"
 	pkg="qemu-system-arm gcc-arm-linux-gnueabihf"
 
 	arch=arm
 	cross=arm-linux-gnueabihf-
 	image=Image.gz
+
+	append="root=/dev/vda rw console=ttyAMA0 $APPEND"
 else
 	platform=arm64
-	kvm="qemu-system-aarch64 -machine virt -M virt,gic_version=3"
+	kvm="qemu-system-aarch64 -machine virt -cpu cortex-a57"
 	pkg="qemu-system-aarch64 gcc-aarch64-linux-gnu"
 
 	arch=arm64
 	cross=aarch64-linux-gnu-
 	image=Image.gz
 
-	APPEND+=" console=ttyAMA0"
+	append="root=/dev/vda rw console=ttyAMA0 $APPEND"
 fi
 
 sudo dpkg -l qemu-user-static $pkg
@@ -58,9 +61,13 @@ else
 	fi
 	
 	if [ ! -f linux-$kver-$arch/.config ]; then
-		# cp linux-$kver-$arch/arch/$arch/configs/defconfig linux-$kver-$arch/.config
-		make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross defconfig
-		sed -i 's|=m$|=y|g' linux-$kver-$arch/.config
+		sed 's|=m$|=y|g' linux-$kver-$arch/arch/$arch/configs/defconfig > linux-$kver-$arch/arch/arm64/configs/arm64_defconfig
+		cat - >> linux-$kver-$arch/arch/arm64/configs/arm64_defconfig <<!
+CONFIG_BLK_DEV_RAM=y
+CONFIG_BLK_DEV_RAM_COUNT=16
+CONFIG_BLK_DEV_RAM_SIZE=65536
+!
+		make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross arm64_defconfig
 	fi
 
 	make -C linux-$kver-$arch ARCH=$arch CROSS_COMPILE=$cross -j$N
@@ -138,7 +145,7 @@ fi
 sudo $kvm -smp $N -m $msize \
 	-kernel $kernel \
 	-hda boot-$arch.img \
-	-append "root=/dev/sda rw console=tty0 console=ttyS0 console=ttyAMR0 loglevel=6 $APPEND" \
+	-append "$append" \
 	-net nic,model=$nic \
 	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
 	$@
