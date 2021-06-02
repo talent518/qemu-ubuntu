@@ -64,6 +64,7 @@ reboot
 ```
 ##### 6.5. login to system
 ```sh
+# build crash 7.3.0 for solution error: cannot determine VA_BITS_ACTUAL
 crash vmlinux vmcore.df 
 ```
 

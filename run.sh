@@ -32,7 +32,7 @@ elif [ "$platform" = "armhf" ]; then
 	cross=arm-linux-gnueabihf-
 	image=Image.gz
 
-	append="root=/dev/vda rw console=ttyAMA0 $APPEND"
+	append="root=/dev/vda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
 else
 	platform=arm64
 	kvm="qemu-system-aarch64 -machine virt -cpu cortex-a57"
@@ -42,7 +42,7 @@ else
 	cross=aarch64-linux-gnu-
 	image=Image.gz
 
-	append="root=/dev/vda rw console=ttyAMA0 $APPEND"
+	append="root=/dev/vda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
 fi
 
 sudo dpkg -l qemu-user-static $pkg
