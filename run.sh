@@ -13,10 +13,10 @@ kconfig=defconfig
 
 if [ "$platform" = "amd64" ]; then
 	if [ $(grep -c -E '(svm|vmx)' /proc/cpuinfo) -gt 0 ]; then
-		kvm=kvm
+		kvm="kvm -smp $N -m $msize"
 		pkg=qemu-kvm
 	else
-		kvm=qemu-system-x86_64
+		kvm="qemu-system-x86_64 -smp $N -m $msize"
 		pkg=qemu-system-x86
 	fi
 
@@ -27,7 +27,7 @@ if [ "$platform" = "amd64" ]; then
 
 	append="root=/dev/sda rw console=ttyS0 loglevel=6 init=/bin/systemd $APPEND"
 elif [ "$platform" = "armhf" ]; then
-	kvm="qemu-system-arm -machine virt -cpu cortex-a8"
+	kvm="qemu-system-arm -machine virt -cpu cortex-a8 -smp $N -m $msize"
 	pkg="qemu-system-arm gcc-arm-linux-gnueabihf"
 
 	arch=arm
@@ -35,10 +35,10 @@ elif [ "$platform" = "armhf" ]; then
 	cross=arm-linux-gnueabihf-
 	image=zImage
 
-	append="root=/dev/vda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
+	append="root=/dev/sda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
 else
 	platform=arm64
-	kvm="qemu-system-aarch64 -machine virt -cpu cortex-a57"
+	kvm="qemu-system-aarch64 -machine virt -cpu cortex-a57 -smp $N -m $msize"
 	pkg="qemu-system-aarch64 gcc-aarch64-linux-gnu"
 
 	arch=arm64
@@ -145,7 +145,7 @@ rm -vf /init
 	touch boot-$platform.ok
 fi
 
-sudo $kvm -smp $N -m $msize \
+sudo $kvm \
 	-kernel $kernel \
 	-hda boot-$platform.img \
 	-append "$append" \
