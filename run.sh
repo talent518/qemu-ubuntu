@@ -99,7 +99,7 @@ if [ ! -f "boot-$platform.img" -o ! -f "boot-$platform.ok" ]; then
 		mkdir boot
 	fi
 
-	dd if=/dev/zero of=boot-$platform.img bs=1M count=8192
+	dd if=/dev/zero of=boot-$platform.img bs=1M count=2048
 	mkfs.ext4 -L rootfs boot-$platform.img
 
 	sudo mount boot-$platform.img boot
