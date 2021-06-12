@@ -26,8 +26,15 @@ if [ "$platform" = "amd64" ]; then
 	kconfig=x86_64_defconfig
 
 	append="root=/dev/sda rw console=ttyS0 loglevel=6 init=/bin/systemd $APPEND"
+	rootfs="-hda boot-$platform.img"
 elif [ "$platform" = "armhf" ]; then
-	kvm="qemu-system-arm -machine virt -cpu cortex-a8 -smp $N -m $msize"
+	dtb=linux-$kver-armhf/arch/arm/boot/dts/vexpress-v2p-ca9.dtb
+
+	if [ -f "bootloader-$platform.dtb" ]; then
+		dtb=bootloader-$platform.dtb
+	fi
+
+	kvm="qemu-system-arm -machine vexpress-a9 -smp $N -m $msize -dtb $dtb"
 	pkg="qemu-system-arm gcc-arm-linux-gnueabihf"
 
 	arch=arm
@@ -35,7 +42,9 @@ elif [ "$platform" = "armhf" ]; then
 	cross=arm-linux-gnueabihf-
 	image=zImage
 
-	append="root=/dev/sda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
+	nic=lan9118
+	append="root=/dev/mmcblk0 rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
+	rootfs="-sd boot-$platform.img"
 else
 	platform=arm64
 	kvm="qemu-system-aarch64 -machine virt -cpu cortex-a57 -smp $N -m $msize"
@@ -46,6 +55,7 @@ else
 	image=Image.gz
 
 	append="root=/dev/vda rw console=ttyAMA0 loglevel=6 init=/bin/systemd $APPEND"
+	rootfs="-hda boot-$platform.img"
 fi
 
 sudo dpkg -l qemu-user-static $pkg
@@ -147,8 +157,8 @@ fi
 
 sudo $kvm \
 	-kernel $kernel \
-	-hda boot-$platform.img \
 	-append "$append" \
+	$rootfs \
 	-net nic,model=$nic \
 	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
 	$@
