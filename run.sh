@@ -34,7 +34,12 @@ elif [ "$platform" = "armhf" ]; then
 		dtb=bootloader-$platform.dtb
 	fi
 
-	kvm="qemu-system-arm -machine vexpress-a9 -smp $N -m $msize -dtb $dtb"
+	n=$N
+	if [ $n -gt 4 ]; then
+		n=4
+	fi
+
+	kvm="qemu-system-arm -machine vexpress-a9 -smp $n -m $msize -dtb $dtb"
 	pkg="qemu-system-arm gcc-arm-linux-gnueabihf"
 
 	arch=arm
