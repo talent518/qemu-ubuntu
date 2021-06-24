@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 if [ ! -f "boot.qcow2" ]; then
-	qemu-img create -t qcow2 boot.qcow2 16G
+	qemu-img create -f qcow2 boot.qcow2 16G
 fi
 
 if [ ! -f "ubuntu-20.04.2.0-desktop-amd64.iso" ]; then
