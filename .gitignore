@@ -7,3 +7,5 @@ boot.qcow2
 linux-*
 *.ok
 bzImage*
+build
+busybox-*
