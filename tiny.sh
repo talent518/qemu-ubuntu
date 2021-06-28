@@ -139,6 +139,8 @@ sys /sys sysfs defaults 0 0
 # lo
 auto lo
 iface lo inet loopback
+    address 127.0.0.1
+    netmask 255.0.0.0
 
 # eth0
 auto eth0
