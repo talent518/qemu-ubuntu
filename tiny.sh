@@ -62,7 +62,7 @@ if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 
 	sudo mount boot-tiny.img boot || exit 17
 
-	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/root boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run || exit 18
+	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/lib/modules boot/root boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run || exit 18
 	sudo cp -v $bbuild/busybox boot/bin/busybox || exit 19
 	$bbuild/busybox --list-full | while read f; do
 		sudo ln -sfv /bin/busybox boot/$f || exit 21
@@ -95,7 +95,8 @@ tiny
 hwclock -s
 hostname -F /etc/hostname
 mount -a
-ifup -a
+ifdown -af
+ifup -af
 !
 	sudo chmod +x rcS || exit 24
 	sudo mv rcS boot/etc/init.d/ || exit 25
@@ -148,7 +149,10 @@ iface eth0 inet dhcp
 !
 	sudo mv interfaces boot/etc/network/ || exit 29
 
-	sudo sh -e -c 'cd boot/dev;mknod -m 600 console c 5 1;mknod -m 666 null c 1 3' || exit 50
+	sudo sh -e -c 'cd boot/dev;mknod -m 600 console c 5 1;mknod -m 666 null c 1 3' || exit 100
+
+	sudo make -C $kpath O=$kbuild INSTALL_MOD_PATH=$PWD/boot modules_install || exit 101
+	test ${kernel_header:-0} -gt 0 && ( sudo make -C $kpath O=$kbuild INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 102 )
 
 	sudo chown -R root.root boot/etc || 250
 
