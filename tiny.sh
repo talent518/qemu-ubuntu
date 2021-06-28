@@ -62,7 +62,7 @@ if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 
 	sudo mount boot-tiny.img boot || exit 17
 
-	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/root boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/tmp boot/var/run || exit 18
+	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/root boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run || exit 18
 	sudo cp -v $bbuild/busybox boot/bin/busybox || exit 19
 	$bbuild/busybox --list-full | while read f; do
 		sudo ln -sfv /bin/busybox boot/$f || exit 21
