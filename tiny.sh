@@ -1,5 +1,18 @@
 #!/bin/bash -l
 
+####################################################
+#                  vga mode                       ##
+####################################################
+# color | 640x800 | 800x600 | 1024x768 | 1280x1024 #
+####################################################
+# 256   |  0x301  |  0x303  |  0x305   |   0x307   #
+# 32K   |  0x310  |  0x313  |  0x316   |   0x319   #
+# 64K   |  0x311  |  0x314  |  0x317   |   0x31A   #
+# 16M   |  0x312  |  0x315  |  0x318   |   0x31B   #
+####################################################
+#                 ./tiny.sh vga=1                  #
+####################################################
+
 set -e
 
 N=$(nproc)
@@ -17,8 +30,18 @@ bpath=busybox-$bver-tiny
 bbuild=$build/busybox
 
 kvm="kvm -smp 2 -m 256"
+opts="-nographic"
+vga=0
+append=
 
 eval $@
+
+if [ $vga -ne 0 ]; then
+	if [ "$opts" = "-nographic" ]; then
+		opts=
+	fi
+	append="$append console=tty0 vga=0x318"
+fi
 
 function quit() {
 	rm -vf $1 || exit 255
@@ -33,7 +56,11 @@ if [ ! -d $kpath ]; then
 	tar -xvf $kfile || quit "-r linux-$kver" 3
 	mv linux-$kver $kpath || exit 4
 fi
-test -f $kbuild/.config || make -C $kpath O=$kbuild defconfig || exit 5
+if [ ! -f "$kbuild/.config" ]; then
+	make -C $kpath O=$kbuild defconfig || exit 5
+	echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kbuild/.config
+	echo "CONFIG_FB_VESA=y" >> $kbuild/.config
+fi
 test -f "$kbuild/vmlinux" || make -C $kpath O=$kbuild -j$N || exit 6
 
 # build busybox
@@ -92,7 +119,7 @@ tiny
 	cat - > rcS <<!
 #!/bin/sh -l
 
-hwclock -s
+hwclock -r
 hostname -F /etc/hostname
 mount -a
 ifdown -af
@@ -115,6 +142,7 @@ fi
 alias l='ls -lF'
 alias ll='ls -alF'
 alias ls='ls --color=auto --full-time'
+alias halt=poweroff
 !
 	sudo mv profile boot/etc/ || exit 26
 
@@ -127,8 +155,9 @@ sys /sys sysfs defaults 0 0
 
 	# /etc/inittab
 	cat - > inittab <<!
-::sysinit:/etc/init.d/rcS
-::respawn:/sbin/getty 115200 ttyS0
+console::sysinit:/etc/init.d/rcS
+ttyS0::respawn:/sbin/getty 115200 ttyS0
+tty1::respawn:/bin/login -p
 ::restart:/sbin/init
 ::shutdown:/bin/umount -a -r
 !
@@ -145,7 +174,10 @@ iface lo inet loopback
 
 # eth0
 auto eth0
-iface eth0 inet dhcp
+iface eth0 inet static
+    address 192.168.3.100
+    netmask 255.255.255.0
+    gateway 192.168.3.1
 !
 	sudo mv interfaces boot/etc/network/ || exit 29
 
@@ -170,5 +202,4 @@ sudo $kvm \
 	-hda boot-tiny.img \
 	-net nic,model=${nic:-e1000e} \
 	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
-	-nographic
 	$opts
