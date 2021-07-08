@@ -73,6 +73,7 @@ if [ ! -d $bpath ]; then
 fi
 test -f $bbuild/.config || make -C $bpath O=$bbuild defconfig || exit 11
 test -f "$bbuild/busybox" || make -C $bpath O=$bbuild -j$N  CONFIG_STATIC=y || exit 12
+test "$bbuild/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bbuild/index.cgi" "$bpath/networking/httpd_indexcgi.c"
 
 # tiny rootfs
 if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
@@ -89,7 +90,7 @@ if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 
 	sudo mount boot-tiny.img boot || exit 17
 
-	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/lib/modules boot/root boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run || exit 18
+	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/lib/modules boot/root/cgi-bin boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run || exit 18
 	sudo cp -v $bbuild/busybox boot/bin/busybox || exit 19
 	$bbuild/busybox --list-full | while read f; do
 		sudo ln -sfv /bin/busybox boot/$f || exit 21
@@ -119,11 +120,28 @@ tiny
 	cat - > rcS <<!
 #!/bin/sh -l
 
+echo -n show hardware clock
 hwclock -r
+
+echo set host name ...
 hostname -F /etc/hostname
+
+echo mount all disk ...
 mount -a
+
+echo config network card ...
 ifdown -af
 ifup -af
+
+echo start telnet server ...
+telnetd
+
+echo start ftp server ...
+mkdir -p /var/log/ftp
+nohup tcpsvd -vE 0.0.0.0 21 ftpd -w /root >/var/log/ftp/access.log 2>/var/log/ftp/error.log &
+
+echo start http server ...
+httpd -r "Authentication" -h /root -vv
 !
 	sudo chmod +x rcS || exit 24
 	sudo mv rcS boot/etc/init.d/ || exit 25
@@ -185,6 +203,7 @@ iface eth0 inet static
 
 	sudo make -C $kpath O=$kbuild INSTALL_MOD_PATH=$PWD/boot modules_install || exit 101
 	test ${kernel_header:-0} -gt 0 && ( sudo make -C $kpath O=$kbuild INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 102 )
+	sudo cp $bbuild/index.cgi boot/root/cgi-bin/
 
 	sudo chown -R root.root boot/etc || 250
 
