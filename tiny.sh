@@ -127,6 +127,7 @@ echo set host name ...
 hostname -F /etc/hostname
 
 echo mount all disk ...
+mkdir -p /dev/pts
 mount -a
 
 echo config network card ...
@@ -168,6 +169,7 @@ alias halt=poweroff
 	cat - > fstab <<!
 proc /proc proc defaults 0 0
 sys /sys sysfs defaults 0 0
+devpts /dev/pts devpts defaults 0 0
 !
 	sudo mv fstab boot/etc/ || exit 27
 
