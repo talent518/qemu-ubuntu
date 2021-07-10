@@ -72,7 +72,12 @@ reboot
 crash vmlinux vmcore.df 
 ```
 ### 7. tiny linux
+* nographic
 ```
 ./tiny.sh
+```
+* vga mode
+```
+./tiny.sh vga=1
 ```
 
