@@ -38,7 +38,7 @@ if [ "$platform" = "amd64" ]; then
 	append="root=/dev/sda rw console=ttyS0 loglevel=6 init=/bin/systemd $APPEND"
 	rootfs="-hda boot-$platform.img"
 elif [ "$platform" = "armhf" ]; then
-	dtb=$src/arch/arm/boot/dts/vexpress-v2p-ca9.dtb
+	dtb=$out/arch/arm/boot/dts/vexpress-v2p-ca9.dtb
 
 	if [ -f "bootloader-$platform.dtb" ]; then
 		dtb=bootloader-$platform.dtb
@@ -99,9 +99,6 @@ else
 CONFIG_BLK_DEV_RAM=y
 CONFIG_BLK_DEV_RAM_COUNT=16
 CONFIG_BLK_DEV_RAM_SIZE=65536
-
-CONFIG_FB_BOOT_VESA_SUPPORT=y
-CONFIG_FB_VESA=y
 !
 		make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross qemu_${platform}_defconfig
 	fi
