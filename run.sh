@@ -2,7 +2,7 @@
 
 set -e
 
-N=$(cat /proc/cpuinfo | grep -c ^processor)
+N=$(nproc)
 kver=${KVER:-5.12.7}
 bver=${BVER:-21.04}
 platform=${PLATFORM:-amd64}
@@ -10,6 +10,16 @@ msize=${MSIZE:-1024M}
 
 nic=e1000e
 kconfig=defconfig
+
+case $platform in
+	amd64) ;;
+	armhf) ;;
+	arm64) ;;
+	*) platform=arm64 ;;
+esac
+
+src=$PWD/src/linux-$kver
+out=$PWD/out/kernel-$platform
 
 if [ "$platform" = "amd64" ]; then
 	if [ $(grep -c -E '(svm|vmx)' /proc/cpuinfo) -gt 0 ]; then
@@ -28,7 +38,7 @@ if [ "$platform" = "amd64" ]; then
 	append="root=/dev/sda rw console=ttyS0 loglevel=6 init=/bin/systemd $APPEND"
 	rootfs="-hda boot-$platform.img"
 elif [ "$platform" = "armhf" ]; then
-	dtb=linux-$kver-armhf/arch/arm/boot/dts/vexpress-v2p-ca9.dtb
+	dtb=$src/arch/arm/boot/dts/vexpress-v2p-ca9.dtb
 
 	if [ -f "bootloader-$platform.dtb" ]; then
 		dtb=bootloader-$platform.dtb
@@ -68,27 +78,35 @@ sudo dpkg -l qemu-user-static $pkg
 if [ -f "bzImage-$platform" ]; then
 	kernel=./bzImage-$platform
 else
-	kernel=linux-$kver-$platform/arch/$arch/boot/$image
+	kernel=$out/arch/$arch/boot/$image
 
-	if [ ! -d linux-$kver-$platform ]; then
+	if [ ! -d $src ]; then
 		if [ ! -f linux-$kver.tar.xz ]; then
 			wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/linux-$kver.tar.xz
 		fi
-		tar -xvf linux-$kver.tar.xz
-		mv linux-$kver linux-$kver-$platform
+		psrc=$(dirname $src)
+		mkdir -p $psrc
+		if ! tar -xvf linux-$kver.tar.xz -C $psrc; then
+			rm -rf $src
+			exit 1
+		fi
 	fi
 	
-	if [ ! -f linux-$kver-$platform/.config ]; then
-		sed 's|=m$|=y|g' linux-$kver-$platform/arch/$arch/configs/$kconfig > linux-$kver-$platform/arch/$arch/configs/qemu_defconfig
-		cat - >> linux-$kver-$platform/arch/$arch/configs/qemu_defconfig <<!
+	if [ ! -f $out/.config ]; then
+		mkdir -p $out
+		sed 's|=m$|=y|g' $src/arch/$arch/configs/$kconfig > $src/arch/$arch/configs/qemu_${platform}_defconfig
+		cat - >> $src/arch/$arch/configs/qemu_${platform}_defconfig <<!
 CONFIG_BLK_DEV_RAM=y
 CONFIG_BLK_DEV_RAM_COUNT=16
 CONFIG_BLK_DEV_RAM_SIZE=65536
+
+CONFIG_FB_BOOT_VESA_SUPPORT=y
+CONFIG_FB_VESA=y
 !
-		make -C linux-$kver-$platform ARCH=$arch CROSS_COMPILE=$cross qemu_defconfig
+		make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross qemu_${platform}_defconfig
 	fi
 
-	make -C linux-$kver-$platform ARCH=$arch CROSS_COMPILE=$cross -j$N
+	make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross -j$N
 fi
 
 if [ ! -f "boot-$platform.img" -o ! -f "boot-$platform.ok" ]; then

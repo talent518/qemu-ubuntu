@@ -40,8 +40,8 @@ Dwarf Error: wrong version in compilation unit header<br/>
 crash: vmlinux: no debugging data available
 ##### Solution
 ```sh
-make -C linux-$kver -j3 DEBUG_CFLAGS='-gdwarf-2 -gstrict-dwarf -g'
-ln -sf linux-$kver/arch/$(uname -p)/boot/bzImage .
+make -C src/linux-5.12.7 O=$PWD/out/kernel-amd64 DEBUG_CFLAGS='-gdwarf-2 -gstrict-dwarf -g' -j3
+ln -sf out/kernel-amd64/arch/x86/boot/bzImage bzImage-amd64
 ```
 ### 6. kdump for crash dump
 
@@ -53,8 +53,26 @@ CONFIG_CRASH_DUMP=y
 CONFIG_PROC_VMCORE=y
 
 ##### 6.2. build
+* amd64
 ```sh
-make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- DEBUG_CFLAGS="-gdwarf-2 -gstrict-dwarf -g" -j4
+make -C src/linux-5.12.7 O=$PWD/out/kernel-amd64 x86_64_defconfig
+make -C src/linux-5.12.7 O=$PWD/out/kernel-amd64 menuconfig
+make -C src/linux-5.12.7 O=$PWD/out/kernel-amd64 DEBUG_CFLAGS='-gdwarf-2 -gstrict-dwarf -g' -j4
+ln -sf out/kernel-amd64/arch/x86/boot/bzImage bzImage-amd64
+```
+* arm64
+```sh
+make -C src/linux-5.12.7 O=$PWD/out/kernel-arm64 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+make -C src/linux-5.12.7 O=$PWD/out/kernel-arm64 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- menuconfig
+make -C src/linux-5.12.7 O=$PWD/out/kernel-arm64 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- DEBUG_CFLAGS="-gdwarf-2 -gstrict-dwarf -g" -j4
+ln -sf out/kernel-arm64/arch/arm64/boot/Image.gz bzImage-arm64
+```
+* armhf
+```sh
+make -C src/linux-5.12.7 O=$PWD/out/kernel-armhf ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- vexpress_defconfig
+make -C src/linux-5.12.7 O=$PWD/out/kernel-armhf ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
+make -C src/linux-5.12.7 O=$PWD/out/kernel-armhf ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- DEBUG_CFLAGS="-gdwarf-2 -gstrict-dwarf -g" -j4
+ln -sf out/kernel-armhf/arch/arm/boot/zImage bzImage-armhf
 ```
 ##### 6.3. login to system
 ```sh
