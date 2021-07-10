@@ -17,17 +17,18 @@ set -e
 
 N=$(nproc)
 
-build=$PWD/build
+src=$PWD/src
+out=$PWD/out
 
 kver=5.12.7
 kfile=linux-$kver.tar.xz
-kpath=linux-$kver-tiny
-kbuild=$build/kernel
+kpath=$src/linux-$kver
+kout=$out/kernel-tiny
 
 bver=1.32.1
 bfile=busybox-$bver.tar.bz2
-bpath=busybox-$bver-tiny
-bbuild=$build/busybox
+bpath=$src/busybox-$bver
+bout=$out/busybox
 
 kvm="kvm -smp 2 -m 256"
 opts="-nographic"
@@ -48,32 +49,26 @@ function quit() {
 	exit $2
 }
 
+mkdir -p $src
+
 # build kernel
-test -d $kbuild || mkdir -p $kbuild || exit 1
+test -d $kout || mkdir -p $kout || exit 1
 test -f $kfile || wget -O $kfile https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/$kfile || quit $kfile 2
-if [ ! -d $kpath ]; then
-	rm -vrf linux-$kver
-	tar -xvf $kfile || quit "-r linux-$kver" 3
-	mv linux-$kver $kpath || exit 4
+test -d $kpath || tar -xvf $kfile -C $src || quit "-r $kpath" 3
+if [ ! -f "$kout/.config" ]; then
+	make -C $kpath O=$kout defconfig || exit 5
+	echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kout/.config
+	echo "CONFIG_FB_VESA=y" >> $kout/.config
 fi
-if [ ! -f "$kbuild/.config" ]; then
-	make -C $kpath O=$kbuild defconfig || exit 5
-	echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kbuild/.config
-	echo "CONFIG_FB_VESA=y" >> $kbuild/.config
-fi
-test -f "$kbuild/vmlinux" || make -C $kpath O=$kbuild -j$N || exit 6
+test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 6
 
 # build busybox
-test -d $bbuild || mkdir -p $bbuild || exit 7
+test -d $bout || mkdir -p $bout || exit 7
 test -f $bfile || wget -O $bfile https://busybox.net/downloads/$bfile || exit 8
-if [ ! -d $bpath ]; then
-	rm -vrf busybox-$bver
-	tar -xvf $bfile || quit "-r busybox-$bver" 9
-	mv busybox-$bver $bpath || exit 10
-fi
-test -f $bbuild/.config || make -C $bpath O=$bbuild defconfig || exit 11
-test -f "$bbuild/busybox" || make -C $bpath O=$bbuild -j$N  CONFIG_STATIC=y || exit 12
-test "$bbuild/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bbuild/index.cgi" "$bpath/networking/httpd_indexcgi.c"
+test -d $bpath || tar -xvf $bfile -C $src || quit "-r $bpath" 3
+test -f $bout/.config || make -C $bpath O=$bout defconfig || exit 11
+test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y || exit 12
+test "$bout/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bout/index.cgi" "$bpath/networking/httpd_indexcgi.c"
 
 # tiny rootfs
 if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
@@ -91,8 +86,8 @@ if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 	sudo mount boot-tiny.img boot || exit 17
 
 	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/lib/modules boot/root/cgi-bin boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run || exit 18
-	sudo cp -v $bbuild/busybox boot/bin/busybox || exit 19
-	$bbuild/busybox --list-full | while read f; do
+	sudo cp -v $bout/busybox boot/bin/busybox || exit 19
+	$bout/busybox --list-full | while read f; do
 		sudo ln -sfv /bin/busybox boot/$f || exit 21
 	done || exit 20
 
@@ -203,9 +198,9 @@ iface eth0 inet static
 
 	sudo sh -e -c 'cd boot/dev;mknod -m 600 console c 5 1;mknod -m 666 null c 1 3' || exit 100
 
-	sudo make -C $kpath O=$kbuild INSTALL_MOD_PATH=$PWD/boot modules_install || exit 101
-	test ${kernel_header:-0} -gt 0 && ( sudo make -C $kpath O=$kbuild INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 102 )
-	sudo cp $bbuild/index.cgi boot/root/cgi-bin/
+	sudo make -C $kpath O=$kout INSTALL_MOD_PATH=$PWD/boot modules_install || exit 101
+	test ${kernel_header:-0} -gt 0 && ( sudo make -C $kpath O=$kout INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 102 )
+	sudo cp $bout/index.cgi boot/root/cgi-bin/
 
 	sudo chown -R root.root boot/etc || 250
 
@@ -218,7 +213,7 @@ iface eth0 inet static
 fi
 
 sudo $kvm \
-	-kernel "${kernel:-$kbuild/arch/x86/boot/bzImage}" \
+	-kernel "${kernel:-$kout/arch/x86/boot/bzImage}" \
 	-append "root=/dev/sda rw console=ttyS0 loglevel=6 init=/linuxrc $append" \
 	-hda boot-tiny.img \
 	-net nic,model=${nic:-e1000e} \
