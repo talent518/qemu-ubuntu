@@ -142,8 +142,6 @@ if [ ! -f "boot-$platform.img" -o ! -f "boot-$platform.ok" ]; then
 	cat - > init <<!
 #!/bin/bash
 
-set -e
-
 test -n "$http_proxy" && export http_proxy=$http_proxy
 test -n "$https_proxy" && export https_proxy=$https_proxy
 
@@ -151,10 +149,13 @@ apt update
 
 if [ "$platform" = "amd64" ]; then
 	apt upgrade -y --fix-missing
-	apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager bind9-dnsutils sysstat make g++ gcc --fix-missing
+	apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager dnsutils sysstat make g++ gcc --fix-missing
 else
-	apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager bind9-dnsutils sysstat make g++ gcc --fix-missing --no-install-recommends
+	apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager dnsutils sysstat make g++ gcc --fix-missing --no-install-recommends
 fi
+
+apt --fix-broken install --fix-missing
+test -x /bin/systemd || exit 1
 
 echo abao-u${bver:0:2}-$platform > /etc/hostname
 echo "abao ALL=(ALL:ALL) ALL" >> /dev/sudoers
