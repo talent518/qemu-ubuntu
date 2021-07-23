@@ -167,6 +167,7 @@ rm -vf /init
 	sudo mv init boot/
 	sudo chmod +x boot/init
 
+	sudo cp /etc/resolv.conf boot/etc/resolv.conf
 	sudo chroot boot /init
 
 	# umount: proc sys dev
