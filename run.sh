@@ -155,7 +155,7 @@ else
 fi
 
 apt --fix-broken install -y --fix-missing
-test -x /bin/systemd || exit 1
+test -f /bin/systemd || exit 1
 
 echo abao-u${bver:0:2}-$platform > /etc/hostname
 echo "abao ALL=(ALL:ALL) ALL" >> /dev/sudoers
