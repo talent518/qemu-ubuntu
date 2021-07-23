@@ -256,7 +256,8 @@ int main(int argc, char *argv[]) {
 
 	gcc -static -o /tmp/user /tmp/user.c || exit 108
 	chmod +x /tmp/user || exit 109
-	strace /tmp/user 2>&1 | grep ^openat | awk -F\" '{print $2;}' | grep "\.so\.[0-9\.]*$" | while read f; do
+	strace -o /tmp/user.txt /tmp/user
+	cat /tmp/user.txt | grep ^openat | awk -F\" '{print $2;}' | grep "\.so(\.[0-9\.])*$" | while read f; do
 		d=boot$(dirname "$f")
 		sudo mkdir -p "$d"
 		sudo cp -v "$f" "$d" || exit 110
