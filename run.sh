@@ -154,7 +154,7 @@ else
 	apt install -y sudo language-pack-en-base ssh net-tools ethtool ifupdown iputils-ping htop vim kmod network-manager dnsutils sysstat make g++ gcc --fix-missing --no-install-recommends
 fi
 
-apt --fix-broken install --fix-missing
+apt --fix-broken install -y --fix-missing
 test -x /bin/systemd || exit 1
 
 echo abao-u${bver:0:2}-$platform > /etc/hostname
