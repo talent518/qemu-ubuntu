@@ -179,7 +179,7 @@ tty1::respawn:/bin/login -p
 	sudo mv inittab boot/etc/ || exit 28
 
 
-	# /etc/interfaces
+	# /etc/network/interfaces
 	cat - > interfaces <<!
 # lo
 auto lo

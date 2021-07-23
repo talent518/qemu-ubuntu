@@ -9,3 +9,4 @@ linux-*
 bzImage*
 build
 busybox-*
+out
