@@ -30,6 +30,11 @@ bfile=busybox-$bver.tar.bz2
 bpath=$src/busybox-$bver
 bout=$out/busybox
 
+dbver=2020.81
+dbfile=dropbear-$dbver.tar.bz2
+dbpath=$src/dropbear-$dbver
+dbout=$out/dropbear
+
 kvm="kvm -smp 2 -m 256"
 opts="-nographic"
 vga=0
@@ -56,19 +61,24 @@ test -d $kout || mkdir -p $kout || exit 1
 test -f $kfile || wget -O $kfile https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/$kfile || quit $kfile 2
 test -d $kpath || tar -xvf $kfile -C $src || quit "-r $kpath" 3
 if [ ! -f "$kout/.config" ]; then
-	make -C $kpath O=$kout defconfig || exit 5
+	make -C $kpath O=$kout defconfig || exit 4
 	echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kout/.config
 	echo "CONFIG_FB_VESA=y" >> $kout/.config
 fi
-test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 6
+test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 5
 
 # build busybox
-test -d $bout || mkdir -p $bout || exit 7
-test -f $bfile || wget -O $bfile https://busybox.net/downloads/$bfile || exit 8
-test -d $bpath || tar -xvf $bfile -C $src || quit "-r $bpath" 3
-test -f $bout/.config || make -C $bpath O=$bout defconfig || exit 11
-test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y || exit 12
-test "$bout/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bout/index.cgi" "$bpath/networking/httpd_indexcgi.c"
+test -d $bout || mkdir -p $bout || exit 6
+test -f $bfile || wget -O $bfile https://busybox.net/downloads/$bfile || exit 7
+test -d $bpath || tar -xvf $bfile -C $src || quit "-r $bpath" 8
+test -f $bout/.config || make -C $bpath O=$bout defconfig || exit 9
+test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y || exit 10
+test "$bout/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bout/index.cgi" "$bpath/networking/httpd_indexcgi.c" || exit 11
+
+# build dropbear
+test -f $dbfile || wget -O $dbfile https://matt.ucc.asn.au/dropbear/$dbfile || quit $dbfile 12
+test -d $dbpath || tar -xvf $dbfile -C $src || quit $dbpath 12
+test -x $dbout/dropbear || bash -ec "mkdir -p $dbout;cd $dbout;$dbpath/configure --enable-static --srcdir=$dbpath --prefix=$PWD/boot/ && make -j$N && make -j$N scp" || exit 12
 
 # tiny rootfs
 if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
@@ -85,7 +95,7 @@ if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 
 	sudo mount boot-tiny.img boot || exit 17
 
-	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/lib/modules boot/root/cgi-bin boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run || exit 18
+	sudo mkdir -p boot/bin boot/sbin boot/usr/bin boot/usr/sbin boot/lib/modules boot/root/cgi-bin boot/dev boot/sys boot/proc boot/etc/init.d boot/etc/profile.d boot/etc/network/if-up.d boot/etc/network/if-pre-up.d boot/etc/network/if-down.d boot/etc/network/if-post-down.d boot/tmp boot/var/run boot/etc/dropbear boot/var/log || exit 18
 	sudo cp -v $bout/busybox boot/bin/busybox || exit 19
 	$bout/busybox --list-full | while read f; do
 		sudo ln -sfv /bin/busybox boot/$f || exit 21
@@ -129,8 +139,14 @@ echo config network card ...
 ifdown -af
 ifup -af
 
+echo start syslogd server ...
+syslogd
+
 echo start telnet server ...
 telnetd
+
+echo start ssh server ...
+dropbear -a -E -B -r /etc/dropbear/dropbear_rsa_host_key
 
 echo start ftp server ...
 mkdir -p /var/log/ftp
@@ -157,6 +173,7 @@ alias l='ls -lF'
 alias ll='ls -alF'
 alias ls='ls --color=auto --full-time'
 alias halt=poweroff
+export PATH='/sbin:/usr/sbin:/bin:/usr/bin'
 !
 	sudo mv profile boot/etc/ || exit 26
 
@@ -200,7 +217,50 @@ iface eth0 inet static
 
 	sudo make -C $kpath O=$kout INSTALL_MOD_PATH=$PWD/boot modules_install || exit 101
 	test ${kernel_header:-0} -gt 0 && ( sudo make -C $kpath O=$kout INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 102 )
-	sudo cp $bout/index.cgi boot/root/cgi-bin/
+	sudo cp $bout/index.cgi boot/root/cgi-bin/ || exit 103
+	
+	sudo bash -ec "cd $dbout;make install inst_scp" || exit 104
+	sudo ln -sfv dbclient /bin/ssh || exit 105
+	sudo $dbout/dropbearkey -t rsa -f boot/etc/dropbear/dropbear_rsa_host_key || exit 106
+	sudo touch boot/var/log/lastlog boot/var/log/wtmp || exit 107
+
+	cat - > /tmp/user.c <<!
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+
+int main(int argc, char *argv[]) {
+	struct passwd *pw;
+	if(argc > 1)
+		pw = getpwnam(argv[1]);
+	else
+		pw = getpwuid(getuid());
+	
+	if(!pw) {
+		perror("user not exists");
+		return 1;
+	}
+	
+	printf("name: %s\n", pw->pw_name);
+	printf("passwd: %s\n", pw->pw_passwd);
+	printf("uid: %d\n", pw->pw_uid);
+	printf("gid: %d\n", pw->pw_gid);
+	printf("gecos: %s\n", pw->pw_gecos);
+	printf("dir: %s\n", pw->pw_dir);
+	printf("shell: %s\n", pw->pw_shell);
+	
+	return 0;
+}
+!
+
+	gcc -static -o /tmp/user /tmp/user.c || exit 108
+	chmod +x /tmp/user || exit 109
+	strace /tmp/user 2>&1 | grep ^openat | awk -F\" '{print $2;}' | grep "\.so\.[0-9\.]*$" | while read f; do
+		d=boot$(dirname "$f")
+		sudo mkdir -p "$d"
+		sudo cp -v "$f" "$d" || exit 110
+	done || exit 111
 
 	sudo chown -R root.root boot/etc || 250
 
@@ -210,6 +270,9 @@ iface eth0 inet static
 	rmdir boot || exit 253
 
 	touch boot-tiny.ok || exit 254
+	
+	printf "\033[31mInstallation is complete, press enter to continue:\033[0m "
+	read
 fi
 
 sudo $kvm \
