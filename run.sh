@@ -7,6 +7,7 @@ kver=${KVER:-5.12.7}
 bver=${BVER:-21.04}
 platform=${PLATFORM:-amd64}
 msize=${MSIZE:-1024M}
+sed=${SED:1}
 
 nic=e1000e
 kconfig=defconfig
@@ -103,7 +104,9 @@ CONFIG_BLK_DEV_RAM_SIZE=65536
 		make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross qemu_${platform}_defconfig
 	fi
 
-	make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross -j$N
+	if [ ! -f $out/vmlinux ]; then
+		make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross -j$N
+	fi
 fi
 
 if [ ! -f "boot-$platform.img" -o ! -f "boot-$platform.ok" ]; then
@@ -130,6 +133,12 @@ if [ ! -f "boot-$platform.img" -o ! -f "boot-$platform.ok" ]; then
 	sudo mount -t sysfs /sys boot/sys
 	sudo mount -o bind /dev boot/dev
 	sudo mount -o bind /dev/pts boot/dev/pts
+
+	if [ $sed -ne 0 ]; then
+		sudo sed -i 's|ports.ubuntu.com|mirrors.aliyun.com|g' boot/etc/apt/sources.list
+		sudo sed -i 's|archive.ubuntu.com|mirrors.aliyun.com|g' boot/etc/apt/sources.list
+		sudo sed -i 's|security.ubuntu.com|mirrors.aliyun.com|g' boot/etc/apt/sources.list
+	fi
 
 	cat - > init <<!
 #!/bin/bash
