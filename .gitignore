@@ -10,3 +10,4 @@ bzImage*
 build
 busybox-*
 out
+dropbear-*
