@@ -38,7 +38,7 @@ dbout=$out/dropbear
 kvm="kvm -smp 2 -m 256"
 opts="-nographic"
 vga=0
-append=
+append="ramoops.mem_address=0xf000000 ramoops.mem_size=0x110000 ramoops.record_size=0x40000 ramoops.console_size=0x40000 ramoops.ftrace_size=0x40000 ramoops.pmsg_size=0x40000"
 
 eval $@
 
@@ -64,6 +64,23 @@ if [ ! -f "$kout/.config" ]; then
 	make -C $kpath O=$kout defconfig || exit 4
 	echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kout/.config
 	echo "CONFIG_FB_VESA=y" >> $kout/.config
+
+	echo "CONFIG_PSTORE=y" >> $kout/.config
+	echo "CONFIG_PSTORE_CONSOLE=y" >> $kout/.config
+	echo "CONFIG_PSTORE_FTRACE=y" >> $kout/.config
+	echo "CONFIG_PSTORE_PMSG=y" >> $kout/.config
+	echo "CONFIG_PSTORE_ZONE=y" >> $kout/.config
+	echo "CONFIG_PSTORE_RAM=y" >> $kout/.config
+	echo "CONFIG_EFI_VARS_PSTORE=y" >> $kout/.config
+	echo "CONFIG_EFI_VARS_PSTORE_DEFAULT_DISABLE=n" >> $kout/.config
+	echo "CONFIG_PSTORE_DEFLATE_COMPRESS=y" >> $kout/.config
+	echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
+	echo "CONFIG_PSTORE_LZ4_COMPRESS=n" >> $kout/.config
+	echo "CONFIG_PSTORE_LZ4HC_COMPRESS=n" >> $kout/.config
+	echo "CONFIG_PSTORE_842_COMPRESS=n" >> $kout/.config
+	echo "CONFIG_PSTORE_ZSTD_COMPRESS=n" >> $kout/.config
+	echo "CONFIG_PSTORE_BLK=n" >> $kout/.config
+	echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
 fi
 test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 5
 
@@ -125,15 +142,14 @@ tiny
 	cat - > rcS <<!
 #!/bin/sh -l
 
-echo -n show hardware clock
-hwclock -r
-
 echo set host name ...
 hostname -F /etc/hostname
 
 echo mount all disk ...
 mkdir -p /dev/pts
 mount -a
+
+sysctl -w kernel.panic=5
 
 echo config network card ...
 ifdown -af
@@ -182,6 +198,7 @@ export PATH='/sbin:/usr/sbin:/bin:/usr/bin'
 proc /proc proc defaults 0 0
 sys /sys sysfs defaults 0 0
 devpts /dev/pts devpts defaults 0 0
+pstore /sys/fs/pstore pstore defaults 0 0
 !
 	sudo mv fstab boot/etc/ || exit 27
 
