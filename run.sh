@@ -73,7 +73,11 @@ else
 	rootfs="-hda boot-$platform.img"
 fi
 
-sudo dpkg -l qemu-user-static $pkg
+if which dpkg >/dev/null; then
+	sudo dpkg -l qemu-user-static $pkg
+else
+	sudo rpm -q qemu-user-static $pkg
+fi
 
 if [ -f "bzImage-$platform" ]; then
 	kernel=./bzImage-$platform
