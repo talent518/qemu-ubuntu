@@ -25,7 +25,7 @@ kfile=linux-$kver.tar.xz
 kpath=$src/linux-$kver
 kout=$out/kernel-tiny
 
-bver=1.32.1
+bver=1.34.1
 bfile=busybox-$bver.tar.bz2
 bpath=$src/busybox-$bver
 bout=$out/busybox
