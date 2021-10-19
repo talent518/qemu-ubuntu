@@ -20,12 +20,12 @@ N=$(nproc)
 src=$PWD/src
 out=$PWD/out
 
-kver=5.12.7
+kver=5.14.10
 kfile=linux-$kver.tar.xz
 kpath=$src/linux-$kver
 kout=$out/kernel-tiny
 
-bver=1.32.1
+bver=1.34.1
 bfile=busybox-$bver.tar.bz2
 bpath=$src/busybox-$bver
 bout=$out/busybox
@@ -63,7 +63,16 @@ test -d $kpath || tar -xvf $kfile -C $src || quit "-r $kpath" 3
 if [ ! -f "$kout/.config" ]; then
 	make -C $kpath O=$kout defconfig || exit 4
 	echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kout/.config
+	echo "CONFIG_FB=y" >> $kout/.config
 	echo "CONFIG_FB_VESA=y" >> $kout/.config
+	echo "CONFIG_FB_CFB_FILLRECT=y" >> $kout/.config
+	echo "CONFIG_FB_CFB_COPYAREA=y" >> $kout/.config
+	echo "CONFIG_FB_CFB_IMAGEBLIT=y" >> $kout/.config
+	echo "CONFIG_DRM_FBDEV_EMULATION=y" >> $kout/.config
+	echo "CONFIG_FIRMWARE_EDID=y" >> $kout/.config
+	echo "CONFIG_FB_FOREIGN_ENDIAN=y" >> $kout/.config
+	echo "CONFIG_FB_MODE_HELPERS=y" >> $kout/.config
+	echo "CONFIG_FB_TILEBLITTING=y" >> $kout/.config
 
 	echo "CONFIG_PSTORE=y" >> $kout/.config
 	echo "CONFIG_PSTORE_CONSOLE=y" >> $kout/.config
