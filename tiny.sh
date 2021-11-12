@@ -297,7 +297,7 @@ fi
 
 sudo $kvm \
 	-kernel "${kernel:-$kout/arch/x86/boot/bzImage}" \
-	-append "root=/dev/sda rw console=ttyS0 loglevel=6 init=/linuxrc $append" \
+	-append "root=/dev/sda rw console=ttyS0 loglevel=7 init=/linuxrc $append" \
 	-hda boot-tiny.img \
 	-net nic,model=${nic:-e1000e} \
 	-net tap,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown \
