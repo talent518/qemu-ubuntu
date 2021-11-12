@@ -237,7 +237,7 @@ iface eth0 inet static
 	sudo cp $bout/index.cgi boot/root/cgi-bin/ || exit 103
 	
 	sudo bash -ec "cd $dbout;make install inst_scp" || exit 104
-	sudo ln -sfv dbclient /bin/ssh || exit 105
+	sudo ln -sfv dbclient boot/bin/ssh || exit 105
 	sudo $dbout/dropbearkey -t rsa -f boot/etc/dropbear/dropbear_rsa_host_key || exit 106
 	sudo touch boot/var/log/lastlog boot/var/log/wtmp || exit 107
 
