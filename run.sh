@@ -73,7 +73,7 @@ else
 	rootfs="-hda boot-$platform.img"
 fi
 
-if which dpkg >/dev/null; then
+if command -v dpkg 2>&1 >/dev/null; then
 	sudo dpkg -l qemu-user-static $pkg
 else
 	sudo rpm -q qemu-user-static $pkg
