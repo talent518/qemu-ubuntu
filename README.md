@@ -9,7 +9,7 @@ sudo cp qemu-if* /etc/
 ./iptables-reset.sh
 
 # public network share
-./iptables-reset.sh
+./iptables-nat.sh
 ```
 ### 2. ubuntu-core
 ver value is 16,18,20. default is 18
