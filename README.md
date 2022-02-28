@@ -46,11 +46,11 @@ ln -sf out/kernel-amd64/arch/x86/boot/bzImage bzImage-amd64
 ### 6. kdump for crash dump
 
 ##### 6.1. .config
-CONFIG_KEXEC=y
-CONFIG_SYSFS=y
-CONFIG_DEBUG_INFO=y
-CONFIG_CRASH_DUMP=y
-CONFIG_PROC_VMCORE=y
+* CONFIG_KEXEC=y
+* CONFIG_SYSFS=y
+* CONFIG_DEBUG_INFO=y
+* CONFIG_CRASH_DUMP=y
+* CONFIG_PROC_VMCORE=y
 
 ##### 6.2. build
 * amd64
