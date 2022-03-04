@@ -137,6 +137,11 @@ if [ ! -f "boot-$platform.img" -o ! -f "boot-$platform.ok" ]; then
 	sudo mount -o bind /dev boot/dev
 	sudo mount -o bind /dev/pts boot/dev/pts
 
+	# install modules
+	sudo make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross INSTALL_MOD_PATH=$PWD/boot modules_install || exit 1
+	# install headers
+	sudo make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 1
+
 	if [ "x$SED" != "x0" ]; then
 		sudo sed -i 's|ports.ubuntu.com|mirrors.aliyun.com|g' boot/etc/apt/sources.list
 		sudo sed -i 's|archive.ubuntu.com|mirrors.aliyun.com|g' boot/etc/apt/sources.list

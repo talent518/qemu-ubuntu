@@ -44,51 +44,51 @@ if [ $vga -ne 0 ]; then
 	append="$append console=tty0 vga=0x318"
 fi
 
-function quit() {
-	rm -vf $1 || exit 255
-	exit $2
-}
-
-mkdir -p $src
-
-# build kernel
-test -d $kout || mkdir -p $kout || exit 1
-test -f $kfile || wget -O $kfile https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/$kfile || quit $kfile 2
-test -d $kpath || tar -xvf $kfile -C $src || quit "-r $kpath" 3
-if [ ! -f "$kout/.config" ]; then
-	make -C $kpath O=$kout defconfig || exit 4
-	echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kout/.config
-	echo "CONFIG_FB_VESA=y" >> $kout/.config
-
-	echo "CONFIG_PSTORE=y" >> $kout/.config
-	echo "CONFIG_PSTORE_CONSOLE=y" >> $kout/.config
-	echo "CONFIG_PSTORE_FTRACE=y" >> $kout/.config
-	echo "CONFIG_PSTORE_PMSG=y" >> $kout/.config
-	echo "CONFIG_PSTORE_ZONE=y" >> $kout/.config
-	echo "CONFIG_PSTORE_RAM=y" >> $kout/.config
-	echo "CONFIG_EFI_VARS_PSTORE=y" >> $kout/.config
-	echo "CONFIG_EFI_VARS_PSTORE_DEFAULT_DISABLE=n" >> $kout/.config
-	echo "CONFIG_PSTORE_DEFLATE_COMPRESS=y" >> $kout/.config
-	echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
-	echo "CONFIG_PSTORE_LZ4_COMPRESS=n" >> $kout/.config
-	echo "CONFIG_PSTORE_LZ4HC_COMPRESS=n" >> $kout/.config
-	echo "CONFIG_PSTORE_842_COMPRESS=n" >> $kout/.config
-	echo "CONFIG_PSTORE_ZSTD_COMPRESS=n" >> $kout/.config
-	echo "CONFIG_PSTORE_BLK=n" >> $kout/.config
-	echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
-fi
-test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 5
-
-# build busybox
-test -d $bout || mkdir -p $bout || exit 6
-test -f $bfile || wget -O $bfile https://busybox.net/downloads/$bfile || exit 7
-test -d $bpath || tar -xvf $bfile -C $src || quit "-r $bpath" 8
-test -f $bout/.config || make -C $bpath O=$bout defconfig || exit 9
-test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y || exit 10
-test "$bout/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bout/index.cgi" "$bpath/networking/httpd_indexcgi.c" || exit 11
-
 # tiny rootfs
 if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
+	function quit() {
+		rm -vf $1 || exit 255
+		exit $2
+	}
+
+	mkdir -p $src
+
+	# build kernel
+	test -d $kout || mkdir -p $kout || exit 1
+	test -f $kfile || wget -O $kfile https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/$kfile || quit $kfile 2
+	test -d $kpath || tar -xvf $kfile -C $src || quit "-r $kpath" 3
+	if [ ! -f "$kout/.config" ]; then
+		make -C $kpath O=$kout defconfig || exit 4
+		echo "CONFIG_FB_BOOT_VESA_SUPPORT=y" >> $kout/.config
+		echo "CONFIG_FB_VESA=y" >> $kout/.config
+
+		echo "CONFIG_PSTORE=y" >> $kout/.config
+		echo "CONFIG_PSTORE_CONSOLE=y" >> $kout/.config
+		echo "CONFIG_PSTORE_FTRACE=y" >> $kout/.config
+		echo "CONFIG_PSTORE_PMSG=y" >> $kout/.config
+		echo "CONFIG_PSTORE_ZONE=y" >> $kout/.config
+		echo "CONFIG_PSTORE_RAM=y" >> $kout/.config
+		echo "CONFIG_EFI_VARS_PSTORE=y" >> $kout/.config
+		echo "CONFIG_EFI_VARS_PSTORE_DEFAULT_DISABLE=n" >> $kout/.config
+		echo "CONFIG_PSTORE_DEFLATE_COMPRESS=y" >> $kout/.config
+		echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
+		echo "CONFIG_PSTORE_LZ4_COMPRESS=n" >> $kout/.config
+		echo "CONFIG_PSTORE_LZ4HC_COMPRESS=n" >> $kout/.config
+		echo "CONFIG_PSTORE_842_COMPRESS=n" >> $kout/.config
+		echo "CONFIG_PSTORE_ZSTD_COMPRESS=n" >> $kout/.config
+		echo "CONFIG_PSTORE_BLK=n" >> $kout/.config
+		echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
+	fi
+	test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 5
+
+	# build busybox
+	test -d $bout || mkdir -p $bout || exit 6
+	test -f $bfile || wget -O $bfile https://busybox.net/downloads/$bfile || exit 7
+	test -d $bpath || tar -xvf $bfile -C $src || quit "-r $bpath" 8
+	test -f $bout/.config || make -C $bpath O=$bout defconfig || exit 9
+	test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y || exit 10
+	test "$bout/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bout/index.cgi" "$bpath/networking/httpd_indexcgi.c" || exit 11
+
 	if [ -d boot ]; then
 		if [ "$(df --output=target boot|tail -n1)" = "$(realpath boot)" ]; then
 			sudo umount -qv boot || exit 13
@@ -234,6 +234,10 @@ iface eth0 inet static
 	
 	printf "\033[31mInstallation is complete, press enter to continue:\033[0m "
 	read
+fi
+
+if [ -z "$kernel" -a -f "bzImage-tiny" ]; then
+	kernel=bzImage-tiny
 fi
 
 sudo $kvm \
