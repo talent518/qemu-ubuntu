@@ -44,13 +44,16 @@ if [ $vga -ne 0 ]; then
 	append="$append console=tty0 vga=0x318"
 fi
 
-# tiny rootfs
-if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
-	function quit() {
-		rm -vf $1 || exit 255
-		exit $2
-	}
+function quit() {
+	rm -vf $1 || exit 255
+	exit $2
+}
 
+if [ -z "$kernel" -a -f "bzImage-tiny" ]; then
+	kernel=bzImage-tiny
+fi
+
+if [ -z "$kernel" ]; then
 	mkdir -p $src
 
 	# build kernel
@@ -80,6 +83,11 @@ if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 		echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
 	fi
 	test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 5
+fi
+
+# tiny rootfs
+if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
+	mkdir -p $src
 
 	# build busybox
 	test -d $bout || mkdir -p $bout || exit 6
@@ -234,10 +242,6 @@ iface eth0 inet static
 	
 	printf "\033[31mInstallation is complete, press enter to continue:\033[0m "
 	read
-fi
-
-if [ -z "$kernel" -a -f "bzImage-tiny" ]; then
-	kernel=bzImage-tiny
 fi
 
 sudo $kvm \
