@@ -3,8 +3,8 @@
 set -e
 
 N=$(nproc)
-kver=${KVER:-5.12.19}
-bver=${BVER:-21.04}
+kver=${KVER:-5.15.129}
+bver=${BVER:-22.04}
 platform=${PLATFORM:-amd64}
 msize=${MSIZE:-1024M}
 
