@@ -84,31 +84,33 @@ if [ -f "bzImage-$platform" ]; then
 else
 	kernel=$out/arch/$arch/boot/$image
 
-	if [ ! -d $src ]; then
-		if [ ! -f linux-$kver.tar.xz ]; then
-			wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/linux-$kver.tar.xz
+	if [ ! -f "$kernel" ]; then
+		if [ ! -d $src ]; then
+			if [ ! -f linux-$kver.tar.xz ]; then
+				wget -O linux-$kver.tar.xz https://cdn.kernel.org/pub/linux/kernel/v${kver:0:1}.x/linux-$kver.tar.xz
+			fi
+			psrc=$(dirname $src)
+			mkdir -p $psrc
+			if ! tar -xvf linux-$kver.tar.xz -C $psrc; then
+				rm -rf $src
+				exit 1
+			fi
 		fi
-		psrc=$(dirname $src)
-		mkdir -p $psrc
-		if ! tar -xvf linux-$kver.tar.xz -C $psrc; then
-			rm -rf $src
-			exit 1
-		fi
-	fi
-	
-	if [ ! -f $out/.config ]; then
-		mkdir -p $out
-		sed 's|=m$|=y|g' $src/arch/$arch/configs/$kconfig > $src/arch/$arch/configs/qemu_${platform}_defconfig
-		cat - >> $src/arch/$arch/configs/qemu_${platform}_defconfig <<!
+		
+		if [ ! -f $out/.config ]; then
+			mkdir -p $out
+			sed 's|=m$|=y|g' $src/arch/$arch/configs/$kconfig > $src/arch/$arch/configs/qemu_${platform}_defconfig
+			cat - >> $src/arch/$arch/configs/qemu_${platform}_defconfig <<!
 CONFIG_BLK_DEV_RAM=y
 CONFIG_BLK_DEV_RAM_COUNT=16
 CONFIG_BLK_DEV_RAM_SIZE=65536
 !
-		make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross qemu_${platform}_defconfig
-	fi
+			make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross qemu_${platform}_defconfig
+		fi
 
-	if [ ! -f $out/vmlinux ]; then
-		make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross -j$N
+		if [ ! -f $out/vmlinux ]; then
+			make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross -j$N
+		fi
 	fi
 fi
 
@@ -137,10 +139,12 @@ if [ ! -f "boot-$platform.img" -o ! -f "boot-$platform.ok" ]; then
 	sudo mount -o bind /dev boot/dev
 	sudo mount -o bind /dev/pts boot/dev/pts
 
-	# install modules
-	sudo make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross INSTALL_MOD_PATH=$PWD/boot modules_install || exit 1
-	# install headers
-	sudo make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 1
+	if [ -d "$src" -a -d "$out" ]; then
+		# install modules
+		sudo make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross INSTALL_MOD_PATH=$PWD/boot modules_install || exit 1
+		# install headers
+		sudo make -C $src O=$out ARCH=$arch CROSS_COMPILE=$cross INSTALL_HDR_PATH=$PWD/boot/usr headers_install || exit 1
+	fi
 
 	if [ "x$SED" != "x0" ]; then
 		sudo sed -i 's|ports.ubuntu.com|mirrors.aliyun.com|g' boot/etc/apt/sources.list

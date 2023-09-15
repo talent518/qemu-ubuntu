@@ -53,7 +53,7 @@ if [ -z "$kernel" -a -f "bzImage-tiny" ]; then
 	kernel=bzImage-tiny
 fi
 
-if [ -z "$kernel" ]; then
+if [ -z "$kernel" -a ! -f "$kout/vmlinux" ]; then
 	mkdir -p $src
 
 	# build kernel
