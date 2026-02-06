@@ -20,12 +20,12 @@ N=$(nproc)
 src=$PWD/src
 out=$PWD/out
 
-kver=5.15.129
+kver=5.15.198
 kfile=linux-$kver.tar.xz
 kpath=$src/linux-$kver
 kout=$out/kernel-tiny
 
-bver=1.34.1
+bver=1.37.0
 bfile=busybox-$bver.tar.bz2
 bpath=$src/busybox-$bver
 bout=$out/busybox
@@ -83,18 +83,23 @@ if [ -z "$kernel" -a ! -f "$kout/vmlinux" ]; then
 		echo "CONFIG_PSTORE_LZO_COMPRESS=n" >> $kout/.config
 	fi
 	test -f "$kout/vmlinux" || make -C $kpath O=$kout -j$N || exit 5
+	make -C $kpath O=$kout INSTALL_HDR_PATH=$out/sysroot headers_install
 fi
 
 # tiny rootfs
 if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 	mkdir -p $src
+	
+	if [ -d "$out/sysroot" ]; then
+		cflags=-I$out/sysroot/include
+	fi
 
 	# build busybox
 	test -d $bout || mkdir -p $bout || exit 6
 	test -f $bfile || wget -O $bfile https://busybox.net/downloads/$bfile || exit 7
 	test -d $bpath || tar -xvf $bfile -C $src || quit "-r $bpath" 8
 	test -f $bout/.config || make -C $bpath O=$bout defconfig || exit 9
-	test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y || exit 10
+	test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y CFLAGS=$cflags || exit 10
 	test "$bout/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bout/index.cgi" "$bpath/networking/httpd_indexcgi.c" || exit 11
 
 	if [ -d boot ]; then
