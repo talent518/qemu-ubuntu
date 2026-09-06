@@ -41,7 +41,7 @@ if [ $vga -ne 0 ]; then
 	if [ "$opts" = "-nographic" ]; then
 		opts=
 	fi
-	append="$append console=tty0 vga=0x318"
+	append="$append console=tty0 vga=ask"
 fi
 
 function quit() {
