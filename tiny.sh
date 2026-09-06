@@ -20,7 +20,7 @@ N=$(nproc)
 src=$PWD/src
 out=$PWD/out
 
-kver=5.15.198
+kver=6.18.49
 kfile=linux-$kver.tar.xz
 kpath=$src/linux-$kver
 kout=$out/kernel-tiny
