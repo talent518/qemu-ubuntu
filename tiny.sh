@@ -25,7 +25,7 @@ kfile=linux-$kver.tar.xz
 kpath=$src/linux-$kver
 kout=$out/kernel-tiny
 
-bver=1.37.0
+bver=1.38.0
 bfile=busybox-$bver.tar.bz2
 bpath=$src/busybox-$bver
 bout=$out/busybox
@@ -98,8 +98,12 @@ if [ ! -f "boot-tiny.img" -o ! -f "boot-tiny.ok" ]; then
 	test -d $bout || mkdir -p $bout || exit 6
 	test -f $bfile || wget -O $bfile https://busybox.net/downloads/$bfile || exit 7
 	test -d $bpath || tar -xvf $bfile -C $src || quit "-r $bpath" 8
-	test -f $bout/.config || make -C $bpath O=$bout defconfig || exit 9
-	test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CONFIG_STATIC=y CFLAGS=$cflags || exit 10
+	if [ ! -f $bout/.config ]; then
+		make -C $bpath O=$bout defconfig || exit 9
+		sed -i 's|CONFIG_TC=y|# CONFIG_TC is not set|g' $bout/.config
+		sed -i 's|# CONFIG_STATIC is not set|CONFIG_STATIC=y|g' $bout/.config
+	fi
+	test -f "$bout/busybox" || make -C $bpath O=$bout -j$N CFLAGS=$cflags || exit 10
 	test "$bout/index.cgi" -nt "$bpath/networking/httpd_indexcgi.c" || ${CROSS_COMPILE}gcc -static -o "$bout/index.cgi" "$bpath/networking/httpd_indexcgi.c" || exit 11
 
 	if [ -d boot ]; then
